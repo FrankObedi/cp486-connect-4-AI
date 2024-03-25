@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Connect4</title>
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='css/index.css') }}"
+    />
+  </head>
+  <body>
+    <div class="game-container">
+      <h1>PLAY CONNECT4</h1>
+      <div class="game-over-container hidden">
+        <div class="game-over-screen">
+          <h1>Game Over</h1>
+          <h2 class="winner"></h2>
+          <button class="play-again-btn" onclick="restartGame()">
+            Play Again
+          </button>
+        </div>
+      </div>
+      <div class="player-turn">
+        <h2 class="current-turn"></h2>
+      </div>
+      <div class="board">
+        {% for row in board %} {% set outterIndex = loop.index0 %}
+        <div class="row">
+          {% for column in row %} {% set puck_type = '' %} {% if column.player
+          == 'R' %} {% set puck_type = 'player1' %} {% elif column.player == 'Y'
+          %} {% set puck_type = 'player2' %} {% endif %}
+          <input
+            id="slot-{{ outterIndex }}-{{ loop.index0 }}"
+            type="button"
+            {%
+            if
+            disable
+            %}disabled{%
+            endif
+            %}
+            class="column col-{{ loop.index0}} {{ puck_type }}"
+            onclick="play_move(event)"
+          />
+          {% endfor %}
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  </body>
+</html>
