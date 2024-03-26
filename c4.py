@@ -108,7 +108,7 @@ def drop_puck(board_local, move, player):
     Had an issue where it places it above empty square due to minimax. This ensure it "drops"
     '''
     r = move.row
-    while r < 4 and board_local[r+1][move.col] == None:
+    while r <= 4 and board_local[r+1][move.col] == None:
         r += 1
     board_local[r][move.col].player = player
         # print(f"Player {player} dropped puck in column {move.col}")
@@ -215,6 +215,7 @@ def is_winning_move(board_local, player, move, from_minimax):
     if not from_minimax:
         board_local[move.row][move.col].player = None
     return False
+
 
 def calc_move_score(board, move, player):
     '''
@@ -412,18 +413,27 @@ def calc_move_score(board, move, player):
             value = max(value,60)
         # these are not exactly correct
         # need to take the spot next to opponent
-        elif row[i].player == None \
-            and row[i+1].player == None \
-            and row[i+2].player == switch_player(player) \
-            and row[i+3].player == switch_player(player) \
-            and row[i+4].player == None:
-            value = max(value,60)
+        
         elif row[i].player == None \
             and row[i+1].player == switch_player(player) \
             and row[i+2].player == switch_player(player) \
             and row[i+3].player == None \
             and row[i+4].player == None:
             value = max(value,60)
+
+        elif row[i].player == None \
+            and row[i+1].player == None \
+            and row[i+2].player == switch_player(player) \
+            and row[i+3].player == switch_player(player) \
+            and row[i+4].player == None:            
+            value = max(value,60)
+        elif row[i].player == None \
+            and row[i+1].player == switch_player(player) \
+            and row[i+2].player == switch_player(player) \
+            and row[i+3].player == switch_player(player) \
+            and row[i+4].player == None:
+
+            value = max(value,65)
     
 
 
@@ -474,7 +484,10 @@ def minimax(board_local, move, depth, alpha, beta, maxing):
                 move.value = 0
                 return move
         else:
-            move.value = calc_move_score(board_local, move, player)
+            if maxing:
+                move.value = calc_move_score(board_local, move, player1)
+            else:
+                move.value = calc_move_score(board_local, move, player2)
             return move
     
     if maxing: # maximize for ai
@@ -483,6 +496,7 @@ def minimax(board_local, move, depth, alpha, beta, maxing):
         move = random.choice(possible_moves)
         
         for next_move in possible_moves: 
+            print (next_move, maxing)
             # print ("MAXXXING", next_move) 
 
             board_copy = board_local.copy()
@@ -492,21 +506,21 @@ def minimax(board_local, move, depth, alpha, beta, maxing):
 
             # reset the temporary placement
             board_copy[next_move.row][next_move.col].player = None
-            board_copy[new_move.row][new_move.col].player = None
+
 
             if new_move.value > best_move.value:
                 best_move = new_move
             alpha = max(alpha, best_move.value)
             if alpha >= beta:
                 break
-        # print("Best Move: ", best_move, "player: ", player )
+        print("Best Move: ", best_move, "player: ", player )
         return best_move
     else: # minimize for human
-        
         best_move.value = inf 
         move = random.choice(possible_moves)
 
         for next_move in possible_moves:
+            print(move, maxing)
             # if depth != 0:
             #     # print ("MINNING", next_move)
             board_copy = board_local.copy()
@@ -516,7 +530,7 @@ def minimax(board_local, move, depth, alpha, beta, maxing):
 
             # reset the temporary placement
             board_copy[next_move.row][next_move.col].player = None
-            board_copy[new_move.row][new_move.col].player = None
+
 
             if new_move.value < best_move.value:
                 best_move = new_move
@@ -526,7 +540,7 @@ def minimax(board_local, move, depth, alpha, beta, maxing):
             if alpha >= beta:
                 break
                 
-        # print("Best Move: ", best_move, "player: ", player )
+        print("Best Move: ", best_move, "player: ", player )
         return best_move
 
     
@@ -610,14 +624,19 @@ if __name__ == "__main__":
         
         if player == player1:
             for move in possible_moves:
-                move.value = calc_move_score(board, move, player)
+                move.value = -calc_move_score(board, move, player)
             for move in possible_moves:
                 print (move)
             move = select_move(possible_moves)           
 
         else:
-            maximizing = True
-            move = minimax(board, None,  1, -inf, inf, True)
+            # for move in possible_moves:
+            #     move.value = calc_move_score(board, move, player)
+            # for move in possible_moves:
+            #     print (move)
+            # move = select_move(possible_moves)  
+            maximizing = False
+            move = minimax(board, None,  2, -inf, inf, True)
 
         print (f"{player} selected ", move)
         # error here is that we have selected a move that will lead to a win in the future
@@ -631,6 +650,7 @@ if __name__ == "__main__":
             display_board(board)
         else:
             print(f"{player} dropping puck on real board at {move}")
+            # drop_puck(board, move, player)
             drop_puck(board, move, player)
 
         player = switch_player(player)
