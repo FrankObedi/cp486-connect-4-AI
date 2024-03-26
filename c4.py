@@ -1,4 +1,5 @@
 from math import inf
+import random
 
 # CONSTANTS
 ROWS, COLUMNS = 6, 7
@@ -118,7 +119,7 @@ def drop_puck(board_local, move, player):
     Had an issue where it places it above empty square due to minimax. This ensure it "drops"
     '''
     r = move.row
-    while r < 4 and board_local[r+1][move.col] == None:
+    while r < 4 and board[r+1][move.col] == None:
         r += 1
     board_local[r][move.col].player = player
     # print(f"Player {player} dropped puck in column {move.col}")
@@ -417,6 +418,14 @@ def calc_move_score(board, move, player):
             value = max(value, 60)
         # these are not exactly correct
         # need to take the spot next to opponent
+
+        elif row[i].player == None \
+                and row[i+1].player == switch_player(player) \
+                and row[i+2].player == switch_player(player) \
+                and row[i+3].player == None \
+                and row[i+4].player == None:
+            value = max(value, 60)
+
         elif row[i].player == None \
                 and row[i+1].player == None \
                 and row[i+2].player == switch_player(player) \
@@ -463,20 +472,28 @@ def minimax(board_local, move, depth, player):
     else:
         p1_wins = False
         p2_wins = False
-    possible_moves = get_possible_moves(board_local)
 
     best_move = possible_moves[0]  # random selection
 
     # BC
-    if depth == 0 or p1_wins or p2_wins or len(possible_moves) == 0:
-        if p1_wins:
-            move.value = 999
-            return move
-        elif p2_wins:
-            move.value = -999
-            return move
+    if depth == 0 or is_terminal:
+        if is_terminal:
+            # move.value = 0
+            # return 0
+            if p1_wins:
+                move.value = 999
+                return move
+            elif p2_wins:
+                move.value = -999
+                return move
+            else:
+                move.value = 0
+                return move
         else:
-            move.value = calc_move_score(board_local, move, player)
+            if maxing:
+                move.value = calc_move_score(board_local, move, player1)
+            else:
+                move.value = calc_move_score(board_local, move, player2)
             return move
 
     if player:
@@ -491,7 +508,8 @@ def minimax(board_local, move, depth, player):
                                1, switch_player(player))
 
             # reset the temporary placement
-            board_copy[move2.row][move2.col].player = None
+            board_copy[next_move.row][next_move.col].player = None
+
             if new_move.value > best_move.value:
                 best_move = new_move
             # alpha = max(alpha, value)
@@ -573,20 +591,25 @@ if __name__ == "__main__":
             break
         print()
         if player == player1:
-            print("-----RED   CHOOSE A COLUMN----")
+            print("-----HUMAN   CHOOSE A COLUMN----")
         else:
             print("-----YELLOW   CHOOSE A COLUMN----")
 
         if player == player1:
             for move in possible_moves:
-                move.value = calc_move_score(board, move, player)
+                move.value = -calc_move_score(board, move, player)
             for move in possible_moves:
                 print(move)
             move = select_move(possible_moves)
 
         else:
-            maximizing = True
-            move = minimax(board, None,  3, player)
+            # for move in possible_moves:
+            #     move.value = calc_move_score(board, move, player)
+            # for move in possible_moves:
+            #     print (move)
+            # move = select_move(possible_moves)
+            maximizing = False
+            move = minimax(board, None,  2, -inf, inf, True)
 
             print("Yellow selected ", move)
 
@@ -597,6 +620,7 @@ if __name__ == "__main__":
             display_board(board)
         else:
             print(f"{player} dropping puck on real board at {move}")
+            # drop_puck(board, move, player)
             drop_puck(board, move, player)
 
         player = switch_player(player)
