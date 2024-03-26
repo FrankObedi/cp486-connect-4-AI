@@ -21,6 +21,7 @@ body {
   border: 7px solid black;
   width: fit-content;
   border-radius: 0 0 7px 7px;
+  background: blue;
 }
 .row {
   display: flex;
@@ -82,7 +83,8 @@ body {
 .hidden {
   display: none;
 }
-.play-again-btn {
+.play-again-btn,
+.get-player-btn {
   padding: 0.5rem 1rem;
   border-radius: 7px;
   background: white;
@@ -90,4 +92,10 @@ body {
   font-size: 1rem;
   cursor: pointer;
   margin-top: 1.5rem;
+}
+
+.get-player-btn {
+  background: #673ab7;
+  color: white;
+  margin-bottom: 1rem;
 }
