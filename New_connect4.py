@@ -8,8 +8,8 @@ PLAYER_AI = 1
 PLAYER_HUMAN = 2
 STR_PLAYER_AI = 'A'
 STR_PLAYER_HUMAN = 'H'
-ROWS = 6
-COLS = 7
+ROWS = 9
+COLS = 9
 WINDOW_SIZE = 4 #  the connect number
 WINDOW_SIZE_LESS1 = WINDOW_SIZE-1
 
@@ -265,6 +265,9 @@ def evaluate_window(window, player):
         score += 5
     elif window.count(player) == WINDOW_SIZE - 2 and window.count(0) == 2: 
         score += 2
+    # for a connect N > 4 add more clauses and change points up
+    # elif window.count(player) == WINDOW_SIZE - 3 and window.count(0) == 3: 
+    #     score += 1
 
     if window.count(opponent) == WINDOW_SIZE - 1 and window.count(0) == 1:
         score -= 4
@@ -356,7 +359,7 @@ def minimax(board, depth, alpha, beta, maximizingPlayer):
         return column, value
 
 
-# '''
+'''
 if __name__ == "__main__":
     board = np.array([[0] * COLS] * ROWS)
 
@@ -471,4 +474,4 @@ if __name__ == "__main__":
         print(f"ai_wins: {wins_ai} (d{DEPTH})  human wins {wins_random} (d{human_depth})  draws {draws}  turns: {count}", 
               "  avg decision time: {:.5f}".format (averag_time / (wins_random + wins_ai + draws)), 
                 "  totalTime: {:.5f}".format(total_time) )
-'''
+# '''
