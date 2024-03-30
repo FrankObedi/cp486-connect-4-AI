@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>CONNECT4 with AI</title>
+    <!-- Link to CSS -->
+    <link
+      rel="stylesheet"
+      type="text/css"
+      href="{{ url_for('static', filename='css/index.css') }}"
+    />
+    <!-- Link to JS code -->
+    <!-- <script src="{{ url_for('static', filename='js/script.js') }}"></script> -->
+  </head>
+  <body>
+    <div class="home-container">
+      <div class="home-content">
+        <h1 class="home-header">Play Connect 4 with AI</h1>
+        <form action="/game" method="post">
+          <div class="form-options">
+            <label for="game-mode">Choose a level:</label>
+            <select id="game-mode" name="game-mode">
+              <option value="1" selected>Too Easy</option>
+              <option value="2">Easy</option>
+              <option value="3">Medium</option>
+              <option value="5">Hard</option>
+            </select>
+          </div>
+          <input type="submit" class="game-link" value="Play Now" />
+        </form>
+      </div>
+    </div>
+  </body>
+</html>

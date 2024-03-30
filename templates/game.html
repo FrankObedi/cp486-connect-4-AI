@@ -4,19 +4,21 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Connect4</title>
+    <!-- Link to CSS -->
     <link
       rel="stylesheet"
       type="text/css"
       href="{{ url_for('static', filename='css/index.css') }}"
     />
+    <!-- Use socket.io -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js"></script>
-    <!-- Link to js code -->
+    <!-- Link to JS code -->
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
   </head>
   <body>
     <div class="game-container">
       <!-- Your existing HTML content here -->
-      <h1>CONNECT4</h1>
+      <h1>CONNECT 4</h1>
       <div class="game-over-container hidden">
         <div class="game-over-screen">
           <h1>Game Over</h1>
@@ -30,27 +32,35 @@
         <h2 class="current-turn">Human Starts</h2>
       </div>
       <!-- <button class="get-player-btn" onclick="get_player()">Get Player</button> -->
-      <div class="board">
-        {% for row in board %} {% set outterIndex = loop.index0 %}
-        <div class="row">
-          {% for column in row %} {% set puck_type = '' %} {% if column.player
-          == 'R' %} {% set puck_type = 'player1' %} {% elif column.player == 'Y'
-          %} {% set puck_type = 'player2' %} {% endif %}
-          <input
-            id="slot-{{ outterIndex }}-{{ loop.index0 }}"
-            type="button"
-            {%
-            if
-            winner
-            %}disabled{%
-            endif
-            %}
-            class="column col-{{ loop.index0}} {{ puck_type }}"
-            onclick="play_move(event)"
-          />
+      <div class="board-container">
+        <div class="player human-player playing">
+          <img src="/static/assets/anonymous.png" alt="Player Image" />
+        </div>
+        <div class="board">
+          {% for row in board %} {% set outterIndex = loop.index0 %}
+          <div class="row">
+            {% for column in row %} {% set puck_type = '' %} {% if column.player
+            == 'R' %} {% set puck_type = 'player1' %} {% elif column.player ==
+            'Y' %} {% set puck_type = 'player2' %} {% endif %}
+            <input
+              id="slot-{{ outterIndex }}-{{ loop.index0 }}"
+              type="button"
+              {%
+              if
+              winner
+              %}disabled{%
+              endif
+              %}
+              class="column col-{{ loop.index0}} {{ puck_type }}"
+              onclick="play_move(event)"
+            />
+            {% endfor %}
+          </div>
           {% endfor %}
         </div>
-        {% endfor %}
+        <div class="player bot-player not-playing">
+          <img src="/static/assets/bot.png" alt="Bot image" />
+        </div>
       </div>
     </div>
 

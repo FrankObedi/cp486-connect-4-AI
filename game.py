@@ -1,554 +1,117 @@
-from math import inf
+from random import shuffle
+import numpy as np
+from math import inf as infinity
+from random import choice as random_choice
+from time import time
+import json
 
-# CONSTANTS
-ROWS, COLUMNS = 6, 7
-player1, player2 = "H", "A"
-window_len = 4
+PLAYER_AI = 1
+PLAYER_HUMAN = 2
+STR_PLAYER_AI = 'A'
+STR_PLAYER_HUMAN = 'H'
+ROWS = 6
+COLS = 7
+WINDOW_SIZE = 4  # the connect number
+WINDOW_SIZE_LESS1 = WINDOW_SIZE-1
 
 
-class square():
+def display_board(board, values=False):
     '''
-    Individual square class.
-    Used to maintain player occupancy and square values.
+    Display the current state of the board.
+    values: if values is true then it displays the array as is. else it displays the string value
     '''
-    player = None
-    value = 0  # default board values
-
-    def __init__(self):
-        pass
-
-    def __str__(self):
-        # return str(self.value)   # show default values
-        if self.player != None:
-            return str(self.player)
-        else:
-            return "-"
-
-    def __repr__(self):
-        return str(self)
-
-    def __eq__(self, other):
-        # if we want to compare points
-        if isinstance(other, square):
-            return self.value == other.value
-        # if we want to compare player
-        else:
-            return self.player == other
-
-    def json_serializable(self):
-        return {
-            "player": self.player
-        }
-
-
-class Move():
-    '''
-    Available move class.
-    Used as an iterable list of available moves along with each moves value.
-    '''
-
-    def __init__(self, row, col, board):
-        self.row = row
-        self.col = col
-        self.value = board[row][col].value
-
-    def __str__(self):
-        return (f'[Move | row: {self.row}  col: {self.col}  value: {self.value}]')
-
-    def __repr__(self):
-        return str(self)
-
-
-def show_possible_moves(possible_moves):
-    '''
-    Prints the column of the possible moves
-    '''
-    s = "Possible moves: "
-    for move in possible_moves:
-        s += f' {move.col}'
-    print(s)
+    for r in range(ROWS):
+        row_string = f'{r}  |'
+        for player in board[r]:
+            if values:
+                row_string += f' {player} |'
+            else:
+                if player == PLAYER_AI:
+                    row_string += f' {STR_PLAYER_AI} |'
+                elif player == PLAYER_HUMAN:
+                    row_string += f' {STR_PLAYER_HUMAN} |'
+                else:
+                    row_string += ' - |'
+        print(row_string)
+    col_string = "    "
+    for c in range(COLS):
+        col_string += f" {c}  "
+    print(col_string)
     return
+
+
+def generate_board(COLS, ROWS):
+    '''
+    Generates the game board every time the game starts
+    '''
+    return np.array([[0] * COLS] * ROWS)
+
+
+def get_json_board(board):
+    # Convert the NumPy array to a Python list
+    board_list = board.tolist()
+    # Convert the Python list to a JSON string
+    json_board = json.dumps(board_list)
+    return json_board
+
+
+def get_possible_moves(board):
+    '''
+    Returns a list of columns that are still available.
+    Orders the columns favouring the center columns.
+    '''
+    available_cols = []
+    available_cols_ordered = []
+    for c in range(COLS):
+        if board[0][c] == 0:
+            available_cols.append(c)
+    mid = len(available_cols)//2
+    i = 0
+    if len(available_cols) == 0:
+        return []
+    while len(available_cols_ordered) != len(available_cols) or i <= mid:
+        if i == 0:
+            available_cols_ordered.append(available_cols[mid+i])
+        else:
+            available_cols_ordered.append(available_cols[mid-i])
+            if len(available_cols_ordered) == len(available_cols):
+                break
+            available_cols_ordered.append(available_cols[mid+i])
+        i += 1
+    # shuffle(available_cols_ordered)   # shuffle to test ai vs ai
+    return available_cols_ordered
 
 
 def select_move(possible_moves, selection):
     '''
     Gives human player the option of selecting one of the available moves.
-    Returns a Move
-
-    returns None if error occurs.
+    Returns a column number
+    Returns None if error occurs.
     '''
-    show_possible_moves(possible_moves)
     completed_move = False
     while completed_move == False:
         try:
-            # selection = int(input("Select a column to place your puck: "))
-            # look for selected move
-            for move in possible_moves:
-                if move.col == selection:
-                    return move
+            if selection in possible_moves:
+                return selection
             # move not found
             selection = None
             print("Error: invalid move")
-            print("MOVE:", selection)
-            break
         except:
             print("Error: invalid move")
-            print("MOVE:", selection)
-            break
     return None
 
 
-def get_possible_moves(board_local):
+def drop_puck(board, col, player):
     '''
-    Iterates through the board to find columns that are still available.
-    Returns: A list of Move objects that represent valid moves available.
-    '''
-    possible_moves = []
-    cols_taken = []
-    for r in range(len(board_local)-1, -1, -1):
-        for c in range(len(board_local[0])):
-            if board_local[r][c].player == None and c not in cols_taken:
-                possible_moves.append(Move(r, c, board_local))
-                cols_taken.append(c)
-            if len(possible_moves) == 7 or (r == 0 and c == 6):
-                possible_moves = sorted(
-                    possible_moves, key=lambda move: move.col)
-                return possible_moves
-    return possible_moves
-
-
-def drop_puck(board_local, move, player):
-    '''
-    Sets the chosen square to the players puck.
-    Had an issue where it places it above empty square due to minimax. This ensure it "drops"
-    '''
-    r = move.row
-    while r < 4 and board_local[r+1][move.col] == None:
-        r += 1
-    board_local[r][move.col].player = player
-    # print(f"Player {player} dropped puck in column {move.col}")
-    return
-
-
-def is_winning_move(board_local, player, move, from_minimax):
-    '''
-    Returns True if this move would result in winnning the game.
-    False otherwise.
-    '''
-    count = 0  # number of occupied squares by player in a succession
-    total_count = 0  # number of occupied squares irrespective of player
-
-    # temporarily drop the puck
-    if not from_minimax:
-        board_local[move.row][move.col].player = player
-
-    # Could avoid doing multiple passes but not a big deal for now
-
-    # Check vertically
-    for c in range(len(board_local[0])):
-        for r in range(len(board_local)-1, -1, -1):
-
-            # no point in counting the rest
-            if (r < 3 and count == 0):
-                break
-
-            # this player has the square, increase counter
-            if (board_local[r][c].player == player):
-                count += 1
-                if count == 4:
-                    return True
-            # If empty square move to next column. nothing on top
-            elif (board_local[r][c].player == None):
-                break
-            # not this player, reset counter
-            else:
-                count = 0
-        count = 0
-
-    # Check horizontally
-    break_flag = False
-    for r in range(len(board_local)-1, -1, -1):
-        for c in range(len(board_local[0])):
-
-            # no point in checking the rest. cant make 4 on this row
-            if (c > len(board_local[0]) - 3 and count == 0 and total_count == 0):
-                break
-
-            # count occupied square
-            if (board_local[r][c].player != None):
-                total_count += 1
-
-            # this player has the square, increase counter
-            if (board_local[r][c].player == player):
-                count += 1
-                if count == 4:
-                    return True
-            # not this player or square is empty, reset counter
-            else:
-                count = 0
-
-            # if a row is scanned and only counted <= 3 occupied squares
-            # cancel searching the board. cannot make 4 above this row
-            if (c == len(board_local[0])-1 and total_count <= 3):
-                break_flag = True
-                break
-
-        if break_flag:  # cancel searching the board
-            break
-        count = 0
-        total_count = 0
-
-    # lazy check
-    # Check diagonal (negative slope)
-    for r in range(len(board_local)-4, -1, -1):
-        for c in range(len(board_local[0])):
-            try:
-                if (board_local[r][c].player == player and
-                    board_local[r+1][c+1].player == player and
-                    board_local[r+2][c+2].player == player and
-                        board_local[r+3][c+3].player == player):
-                    return True
-            except:
-                pass
-
-    # Check diagonal (positive slope)
-    for r in range(3, len(board_local)):
-        for c in range(len(board_local[0])):
-            try:
-                if (board_local[r][c].player == player and
-                    board_local[r-1][c+1].player == player and
-                    board_local[r-2][c+2].player == player and
-                        board_local[r-3][c+3].player == player):
-                    return True
-            except:
-                pass
-
-    # return the sqaure back to normal
-    if not from_minimax:
-        board_local[move.row][move.col].player = None
-    return False
-
-
-def calc_move_score(board, move, player):
-    '''
-    Calculate the value of making this move.
-    This is done for each possible move.
-    Move is made temporarily and the value is calculated.
-    '''
-    bonus = 0
-    board[move.row][move.col].player = player.lower()  # for visualization
-    # print ("------calc move begin---------")
-    # print(f"this player is {player}")
-    # print (move)
-    # print()
-    # display_board()
-
-    # temporarily drop the puck
-    board[move.row][move.col].player = player
-    # get default value
-    value = board[move.row][move.col].value
-
-    '''Check vertically'''
-    # create a list of the column
-    player_count = 0
-    opponent_count = 0
-    column = [board[r][move.col] for r in range(len(board))]
-
-    # count opponent pieces in row
-    skip = 1  # skip this players temporary placed piece
-    for sq in column:
-        if sq.player == player and skip == 1:
-            skip -= 1
-            continue
-        elif sq.player == switch_player(player):
-            opponent_count += 1
-        elif sq.player == player:
-            break
-
-    # count player pieces in row
-    for sq in column:
-        if sq.player == player:
-            player_count += 1
-        elif sq.player == switch_player(player):
-            break
-
-    if opponent_count == 3 and player_count == 1:  # favour preventing opponent win over getting 3 in a row
-        value = max(value, 110)
-    elif opponent_count == 2:  # favour blocking a 2 over something else
-        bonus = 2
-
-    if player_count == 4:  # you win
-        value = inf
-    elif player_count == 3 and move.row > 0:  # 3 in a row and atleast one space left
-        value = max(value, 100)
-    elif player_count == 3 and move.row == 0:  # less points since you can no longer make 4
-        value = max(value, 50)
-    elif player_count == 2:  # 2 in a row
-        value = max(value, 10)
-    elif player_count == 1:  # one
-        value = max(value, 0)
-
-    '''Check horizontally'''
-    player_count = 0
-    row = board[move.row]
-
-    for c in range(move.col - window_len+1, len(board[0])-3):
-        if c < 0:  # dont start index from negative
-            continue
-        if c > move.col:  # if we pass our move col, stop
-            break
-        window = row[c:c + window_len]  # our possible windows
-
-        # count number of different squares
-        player_count = window.count(player)
-        empty_count = window.count(None)
-        opponent_count = window.count(switch_player(player))
-
-        if player_count == 4:  # you win
-            value = inf
-        elif opponent_count == 3:  # if opponent has 3 in this window, critical to make this move
-            value = max(value, 110)
-        elif player_count == 3 and empty_count == 1:  # 3 in a row with one still left
-            value = max(value, 100)
-        elif player_count == 2 and empty_count == 2:  # 2 in a row with two still left
-            value = max(value, 10)
-        elif player_count == 1:  # either leave this 0 or low number
-            value = max(value, 0)
-        # print (c, window, value)
-
-    '''Check diagonally - positive slope'''
-    # find the start of the diagonal
-    r, c = move.row, move.col
-    while r < 5 and c > 0:
-        c -= 1
-        r += 1
-
-    # check each window of 4
-    temp_r = r
-    temp_c = c
-    while r > 2 and c < 4:  # cant make four otherwise
-        window = []
-        while r >= 0 and c <= 6 and len(window) < 4:  # build the window
-            window.append(board[r][c])
-            c += 1
-            r -= 1
-
-        # evaluate the window
-        player_count = window.count(player)
-        empty_count = window.count(None)
-        opponent_count = window.count(switch_player(player))
-
-        if player_count == 4:  # you win
-            value = inf
-        elif opponent_count == 3:  # if opponent has 3 in this window, critical to make this move
-            value = max(value, 110)
-        elif player_count == 3 and empty_count == 1:  # 3 in a row with one still left
-            value = max(value, 100)
-        elif player_count == 2 and empty_count == 2:  # 2 in a row with two still left
-            value = max(value, 10)
-        elif player_count == 1:  # either leave this 0 or low number
-            value = max(value, 0)
-        # print (window, value)
-
-        # move to the next window
-        temp_r -= 1
-        temp_c += 1
-        r = temp_r
-        c = temp_c
-
-    '''Check diagonally - negative slope'''
-    # find the start of the diagonal
-    r, c = move.row, move.col
-    while r > 0 and c > 0:
-        c -= 1
-        r -= 1
-    # check each window of 4
-    temp_r = r
-    temp_c = c
-    while r < 3 and c < 4:  # cant make four otherwise
-        window = []
-        while r <= 5 and c <= 6 and len(window) < 4:  # build the window
-            window.append(board[r][c])
-            c += 1
-            r += 1
-
-        # evaluate the window
-        player_count = window.count(player)
-        empty_count = window.count(None)
-        opponent_count = window.count(switch_player(player))
-
-        if player_count == 4:  # you win
-            value = inf
-        elif opponent_count == 3:  # if opponent has 3 in this window, critical to make this move
-            value = max(value, 110)
-        elif player_count == 3 and empty_count == 1:  # 3 in a row with one still left
-            value = max(value, 100)
-        elif player_count == 2 and empty_count == 2:  # 2 in a row with two still left
-            value = max(value, 10)
-        elif player_count == 1:  # either leave this 0 or low number
-            value = max(value, 0)
-
-        # move to the next window
-        temp_r += 1
-        temp_c += 1
-        r = temp_r
-        c = temp_c
-
-    '''
-    Special cases
-    wont need this with minimax
-    '''
-    # Case 1
-    # break up patterns such as | - | R | - | R | - |
-    # if  | - | R | R | R | - |  happens then Y losses
-    # or  | - | R | R | - | - | or | - | - | R | R | - |
-    # reason to take middle rows first.
-    for i in range(len(row)-4):
-        if row[i].player == None \
-                and row[i+1].player == switch_player(player) \
-                and row[i+2].player == player \
-                and row[i+3].player == switch_player(player) \
-                and row[i+4].player == None:
-            value = max(value, 60)
-        elif row[i].player == player \
-                and row[i+1].player == switch_player(player) \
-                and row[i+2].player == None \
-                and row[i+3].player == switch_player(player) \
-                and row[i+4].player == None:
-            value = max(value, 60)
-        elif row[i].player == None \
-                and row[i+1].player == switch_player(player) \
-                and row[i+2].player == None \
-                and row[i+3].player == switch_player(player) \
-                and row[i+4].player == player:
-            value = max(value, 60)
-        # these are not exactly correct
-        # need to take the spot next to opponent
-        elif row[i].player == None \
-                and row[i+1].player == None \
-                and row[i+2].player == switch_player(player) \
-                and row[i+3].player == switch_player(player) \
-                and row[i+4].player == None:
-            value = max(value, 60)
-        elif row[i].player == None \
-                and row[i+1].player == switch_player(player) \
-                and row[i+2].player == switch_player(player) \
-                and row[i+3].player == None \
-                and row[i+4].player == None:
-            value = max(value, 60)
-
-    board[move.row][move.col].player = None
-    # print ("------calc move end---------")
-
-    return value + board[move.row][move.col].value + bonus
-
-
-'''
-function minimax(node, depth, maximizingPlayer) is
-    if depth = 0 or node is a terminal node then
-        return the heuristic value of node
-    if maximizingPlayer then
-        value := −∞
-        for each child of node do
-            value := max(value, minimax(child, depth − 1, FALSE))
-        return value
-    else (* minimizing player *)
-        value := +∞
-        for each child of node do
-            value := min(value, minimax(child, depth − 1, TRUE))
-        return value
-'''
-
-
-def minimax(board_local, move, depth, player):
-    # print(f"---entering minimax-  depth: {depth}   player {player}")
-    # print(move)
-    # display_board(board_local)
-    if move != None:
-        p1_wins = is_winning_move(board_local, player1, move, True)
-        p2_wins = is_winning_move(board_local, player2, move, True)
-    else:
-        p1_wins = False
-        p2_wins = False
-    possible_moves = get_possible_moves(board_local)
-
-    best_move = possible_moves[0]  # random selection
-
-    # BC
-    if depth == 0 or p1_wins or p2_wins or len(possible_moves) == 0:
-        if p1_wins:
-            move.value = 999
-            return move
-        elif p2_wins:
-            move.value = -999
-            return move
-        else:
-            move.value = calc_move_score(board_local, move, player)
-            return move
-
-    if player:
-        best_move.value = -inf
-        for move2 in possible_moves:
-
-            board_copy = board_local.copy()
-            drop_puck(board_copy, move2, player)
-            # board_copy[move2.row][move2.col].player = player
-            # display_board(board_copy)
-            new_move = minimax(board_copy, move2, depth -
-                               1, switch_player(player))
-
-            # reset the temporary placement
-            board_copy[move2.row][move2.col].player = None
-            if new_move.value > best_move.value:
-                best_move = new_move
-            # alpha = max(alpha, value)
-                # if alpha >= beta:
-                # 	break
-    else:
-        pass
-
-    # print("best move from minimax ", best_move)
-    return best_move
-
-
-def generate_board():
-    '''
-    Generates an empty board. 
-    Returns: A 2D list of squares.
-    [[square,square,...],[square,square,...], ...]
-    '''
-    board = [[square() for _ in range(COLUMNS)] for _ in range(ROWS)]
-
-    # default values to favour middle column.
-    bias = 0
-    for c in range(COLUMNS):
-        if c < 3:
-            bias += 1
-        elif c == 3:
-            bias = 5
-        elif c == 4:
-            bias = 2
-        else:
-            bias -= 1
-        for r in range(ROWS):
-            if r > 1 and c == 3:
-                bias = 8
-            board[r][c].value = bias + r
-    return board
-
-
-def display_board(board_local):
-    '''
-    Display the current state of the board.
+    Drop the players puck in the chosen column.
     '''
     r = 0
-    for row in board_local:
-        row_string = f'{r} |'
+    if board[r][col] != 0:
+        print(f"ERROR: cannot drop puck in column {col}")
+        return
+    while r < ROWS-1 and board[r+1][col] == 0:
         r += 1
-        for sq in row:
-            row_string += f' {sq} |'
-        print(row_string)
-    print('    0   1   2   3   4   5   6')
+    board[r][col] = player
     return
 
 
@@ -556,54 +119,383 @@ def switch_player(player):
     '''
     Return the opposite player.
     '''
-    if player == player1:
-        return player2
+    if player == PLAYER_AI:
+        return PLAYER_HUMAN
     else:
-        return player1
+        return PLAYER_AI
+
+# def is_winning_move(board, piece):
+    '''
+    Original
+    code taken from https://github.com/KeithGalli/Connect4-Python/blob/master/connect4_with_ai.py#L67
+    '''
+    # Check horizontal locations for win
+    for c in range(COLS-3):
+        for r in range(ROWS-4, 0, -1):
+            if board[r][c] == piece and board[r][c+1] == piece and board[r][c+2] == piece and board[r][c+3] == piece:
+                return True
+
+    # Check vertical locations for win
+    for c in range(COLS):
+        for r in range(ROWS-4, 0, -1):
+            if board[r][c] == piece and board[r+1][c] == piece and board[r+2][c] == piece and board[r+3][c] == piece:
+                return True
+
+    # Check positively sloped diaganols
+    for c in range(COLS-3):
+        for r in range(ROWS-3):
+            if board[r][c] == piece and board[r+1][c+1] == piece and board[r+2][c+2] == piece and board[r+3][c+3] == piece:
+                return True
+
+    # Check negatively sloped diaganols
+    for c in range(COLS-3):
+        for r in range(3, ROWS):
+            if board[r][c] == piece and board[r-1][c+1] == piece and board[r-2][c+2] == piece and board[r-3][c+3] == piece:
+                return True
+    return False
+
+# def is_winning_move(board, piece):
+    '''
+    code taken from https://github.com/KeithGalli/Connect4-Python/blob/master/connect4_with_ai.py#L67
+        modified for connect N. Slightly slower than above version
+    '''
+    # Check horizontal locations for win
+    for c in range(COLS-(WINDOW_SIZE-1)):
+        for r in range(ROWS):
+            count = 0
+            for i in range(WINDOW_SIZE):
+                if board[r][c+i] == piece:
+                    count += 1
+            if count == WINDOW_SIZE:
+                return True
+
+    # Check vertical locations for win
+    for c in range(COLS):
+        for r in range(ROWS-(WINDOW_SIZE-1)):
+            count = 0
+            for i in range(WINDOW_SIZE):
+                if board[r+i][c] == piece:
+                    count += 1
+            if count == WINDOW_SIZE:
+                return True
+
+    # Check positively sloped diaganols
+    for c in range(COLS-(WINDOW_SIZE-1)):
+        for r in range(ROWS-(WINDOW_SIZE-1)):
+            count = 0
+            for i in range(WINDOW_SIZE):
+                if board[r+i][c+i] == piece:
+                    count += 1
+            if count == WINDOW_SIZE:
+                return True
+
+    # Check negatively sloped diaganols
+    for c in range(COLS-(WINDOW_SIZE-1)):
+        for r in range((WINDOW_SIZE-1), ROWS):
+            count = 0
+            for i in range(WINDOW_SIZE):
+                if board[r-i][c+i] == piece:
+                    count += 1
+            if count == WINDOW_SIZE:
+                return True
+
+
+def is_winning_move(board, player):
+    '''
+    Returns True if this move would result in winnning the game.
+    False otherwise.
+    '''
+    # Check vertically
+    for c in range(COLS):
+        count = 0  # number of occupied squares by player in a succession
+        for r in range(ROWS):
+            # no point in counting the rest
+            if (r > ROWS-WINDOW_SIZE and count == 0):
+                break
+            # this player has the square, increase counter
+            if (board[r][c] == player):
+                count += 1
+                if count == WINDOW_SIZE:
+                    return True
+            # opponent found
+            elif (board[r][c] == switch_player(player)):
+                break
+
+    # Check horizontally
+    break_flag = False
+    for r in range(ROWS-1, -1, -1):
+        count = 0  # number of occupied squares by player in a succession
+        occupied_count = 0  # number of occupied squares irrespective of player
+        for c in range(COLS):
+            # no point in checking the rest. cant make 4 on this row
+            if (c > COLS - WINDOW_SIZE and count == 0 and occupied_count == 0):
+                break
+            # count occupied square
+            if (board[r][c] != 0):
+                occupied_count += 1
+
+            # this player has the square, increase counter
+            if (board[r][c] == player):
+                count += 1
+                if count == WINDOW_SIZE:
+                    return True
+            # not this player or square is empty, reset counter
+            else:
+                count = 0
+            # if a row is scanned and only counted <= 3 occupied squares
+            # cancel searching the board. cannot make 4 above this row
+            if (c == COLS-1 and occupied_count <= WINDOW_SIZE_LESS1):
+                break_flag = True
+                break
+        if break_flag:  # cancel searching the board
+            break
+
+    # Check positively sloped diaganols
+    for c in range(COLS-WINDOW_SIZE_LESS1):
+        for r in range(ROWS-WINDOW_SIZE_LESS1):
+            count = 0
+            for i in range(WINDOW_SIZE):
+                if board[r+i][c+i] == player:
+                    count += 1
+            if count == WINDOW_SIZE:
+                return True
+
+    # Check negatively sloped diaganols
+    for c in range(COLS-WINDOW_SIZE_LESS1):
+        for r in range(WINDOW_SIZE_LESS1, ROWS):
+            count = 0
+            for i in range(WINDOW_SIZE):
+                if board[r-i][c+i] == player:
+                    count += 1
+            if count == WINDOW_SIZE:
+                return True
+    return False
+
+
+def evaluate_window(window, player):
+    '''
+    Evaluates a single window.
+    code taken from https://github.com/KeithGalli/Connect4-Python/blob/master/connect4_with_ai.py#L67
+    '''
+    score = 0
+    opponent = switch_player(player)
+
+    if window.count(player) == WINDOW_SIZE:
+        score += 100
+    elif window.count(player) == WINDOW_SIZE - 1 and window.count(0) == 1:
+        score += 5
+    elif window.count(player) == WINDOW_SIZE - 2 and window.count(0) == 2:
+        score += 2
+    # for a connect N > 4 add more clauses and change points up
+    # elif window.count(player) == WINDOW_SIZE - 3 and window.count(0) == 3:
+    #     score += 1
+
+    if window.count(opponent) == WINDOW_SIZE - 1 and window.count(0) == 1:
+        score -= 4
+    return score
+
+
+def evaluate_board(board, player):
+    '''
+    Evaluates the board state and returns a score in terms of the provided player.
+    code taken from https://github.com/KeithGalli/Connect4-Python/blob/master/connect4_with_ai.py#L67
+    '''
+    value = 0
+    # Vertical
+    for c in range(COLS):
+        column = [board[row][c] for row in range(ROWS)]
+        for r in range(ROWS-WINDOW_SIZE_LESS1):
+            window = column[r:r + WINDOW_SIZE]
+            value += evaluate_window(window, player)
+
+    # Horizontal
+    for r in range(ROWS):
+        row = [board[r][col] for col in range(COLS)]
+        for c in range(COLS-WINDOW_SIZE_LESS1):
+            window = row[c:c + WINDOW_SIZE]
+            value += evaluate_window(window, player)
+
+    # Diagonal Negative Slope
+    for r in range(ROWS-WINDOW_SIZE_LESS1):
+        for c in range(COLS-WINDOW_SIZE_LESS1):
+            window = [board[r+i][c+i] for i in range(WINDOW_SIZE)]
+            value += evaluate_window(window, player)
+
+    # Diagonal Positive Slope
+    for r in range(ROWS-WINDOW_SIZE_LESS1):
+        for c in range(COLS-WINDOW_SIZE_LESS1):
+            window = [board[r-i+WINDOW_SIZE_LESS1][c+i]
+                      for i in range(WINDOW_SIZE)]
+            value += evaluate_window(window, player)
+    return value
+
+
+def minimax(board, depth, alpha, beta, maximizingPlayer):
+    '''
+    Minimax algorithm
+    code taken from https://github.com/KeithGalli/Connect4-Python/blob/master/connect4_with_ai.py#L67
+    '''
+    possible_moves = get_possible_moves(board)
+    ai_wins = is_winning_move(board, PLAYER_AI)
+    human_wins = is_winning_move(board, PLAYER_HUMAN)
+    is_terminal = len(possible_moves) == 0 or ai_wins or human_wins
+
+    if depth == 0 or is_terminal:
+        if is_terminal:
+            if ai_wins:
+                return (None, infinity)
+            elif human_wins:
+                return (None, -infinity)
+            else:  # Game is over, no more valid moves
+                return (None, 0)
+        else:  # Depth is zero
+            x = evaluate_board(board, PLAYER_AI)
+            return (None, x)
+
+    if maximizingPlayer:
+        value = -infinity
+        column = random_choice(possible_moves)
+
+        for col in possible_moves:
+            b_copy = board.copy()
+            drop_puck(b_copy, col, PLAYER_AI)
+            new_score = minimax(b_copy, depth-1, alpha, beta, False)[1]
+            if new_score > value:
+                value = new_score
+                column = col
+            alpha = max(alpha, value)
+            if alpha >= beta:
+                break
+        return column, value
+    else:  # Minimizing player
+        value = infinity
+        column = random_choice(possible_moves)
+        for col in possible_moves:
+            b_copy = board.copy()
+            drop_puck(b_copy,  col, PLAYER_HUMAN)
+            new_score = minimax(b_copy, depth-1, alpha, beta, True)[1]
+            if new_score < value:
+                value = new_score
+                column = col
+            beta = min(beta, value)
+            if alpha >= beta:
+                break
+        return column, value
 
 
 if __name__ == "__main__":
-
-    board = generate_board()
-
-    display_board(board)
+    # board = np.array([[0] * COLS] * ROWS)
+    board = generate_board(COLS, ROWS)
 
     winner = None
-    player = player1
+    player = PLAYER_HUMAN
 
     while winner == None:
         display_board(board)
+
         possible_moves = get_possible_moves(board)
 
         if len(possible_moves) == 0:
             print("----Draw----")
             break
+
         print()
-        if player == player1:
-            print("-----RED   CHOOSE A COLUMN----")
+        if player == PLAYER_HUMAN:
+            print("-----HUMAN   CHOOSE A COLUMN----")
         else:
-            print("-----YELLOW   CHOOSE A COLUMN----")
+            print("-----AI's   TURN ----")
 
-        if player == player1:
-            for move in possible_moves:
-                move.value = calc_move_score(board, move, player)
-            for move in possible_moves:
-                print(move)
-            move = select_move(possible_moves)
+        if player == PLAYER_HUMAN:
+            column = select_move(possible_moves)
 
         else:
-            maximizing = True
-            move = minimax(board, None,  3, player)
+            DEPTH = 4
+            t1 = time()
+            column, value = minimax(
+                board, DEPTH, -1000000000000, 1000000000000, True)
+            t2 = time()
+            print("decision made in {:.02f} seconds".format(t2-t1))
 
-            print("Yellow selected ", move)
+        drop_puck(board, column, player)
 
-        if is_winning_move(board, player, move, False):
-            print(f'Player {player} wins!!!')
+        if player == PLAYER_HUMAN:
+            print(f"HUMAN has selected column ", column)
+        else:
+            print(f"AI has selected column ", column)
+
+        if is_winning_move(board, player):
+            if player == PLAYER_HUMAN:
+                print(f"\n\n       HUMAN WINS!\n\n")
+            else:
+                print(f"\n\n       AI IS VICTORIOUS!\n\n")
             winner = player
-            board[move.row][move.col].player = player
             display_board(board)
-        else:
-            print(f"{player} dropping puck on real board at {move}")
-            drop_puck(board, move, player)
 
         player = switch_player(player)
+
+    print("--------------GAME OVER----------------")
+
+
+'''
+# AI vs AI
+if __name__ == "__main__":
+    draws = 0
+    wins_ai = 0
+    wins_random = 0
+    averag_time = 0
+    total_time = 0
+    DEPTH = 3
+    human_depth = 3
+
+    while wins_ai + wins_random < 1000:
+
+        board = np.array([[0] * COLS] * ROWS)
+
+        winner = None
+        player = PLAYER_HUMAN
+        count = 0
+        timer_sum = 0
+
+        while winner == None:
+            possible_moves = get_possible_moves(board)
+
+        
+            if len(possible_moves) == 0:
+                draws += 1
+                print("----Draw----")
+                display_board(board)
+                break
+
+            if player == PLAYER_HUMAN:
+
+                if count == 0:
+                    column = COLS//2
+                else:
+                    column,value = minimax(board, human_depth, -1000000000000, 1000000000000, True)
+
+            else:
+                t1 = time()
+                column,value = minimax(board, DEPTH, -1000000000000, 1000000000000, True)
+                t2 = time()
+                timer_sum += t2-t1
+                count += 1
+
+            drop_puck(board,column,player)
+          
+            if is_winning_move(board, player):
+                if player == PLAYER_HUMAN:
+                    wins_random += 1
+                else:
+                    wins_ai += 1                
+                winner = player
+                display_board(board)
+       
+            player = switch_player(player)
+
+        averag_time += timer_sum/count
+        total_time += timer_sum
+
+        print(f"ai_wins: {wins_ai} (d{DEPTH})  human wins {wins_random} (d{human_depth})  draws {draws}  turns: {count}", 
+              "  avg decision time: {:.5f}".format (averag_time / (wins_random + wins_ai + draws)), 
+                "  totalTime: {:.5f}".format(total_time) )
+'''

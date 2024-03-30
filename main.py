@@ -1,4 +1,4 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 import game
 import time
@@ -6,56 +6,83 @@ import time
 app = Flask(__name__)
 socketio = SocketIO(app)
 
+
+# Constants
+PLAYER_AI = 1
+PLAYER_HUMAN = 2
+STR_PLAYER_AI = 'A'
+STR_PLAYER_HUMAN = 'H'
+ROWS = 6
+COLS = 7
+
+
 # Game state variables
 board = None
 player = None
 winner = None
+game_mode = 1
+
 
 # Initialize the game
-
-
-def check_move(board, player, move):
+def check_move(board, move, player):
     winner = None
-    if game.is_winning_move(board, player, move, False):
+    game.drop_puck(board, move, player)
+
+    if game.is_winning_move(board, player):
         print(f'Player {player} wins!!!')
         winner = player
-        board[move.row][move.col].player = player
+    player = game.switch_player(player)
+    if player == 1:
+        str_player = "A"
     else:
-        # print(f"{player} dropping puck on real board at {move}")
-        game.drop_puck(board, move, player)
-        player = game.switch_player(player)
-    return player, winner
+        str_player = "H"
+    return player, str_player, winner
 
 
 def init_game():
-    player1, player2 = "H", "A"
-    player = player1
+    # player1, player2 = "H", "A"
+    player = PLAYER_HUMAN
     winner = None
-    board = game.generate_board()
-    return board, player1, player2, player, winner
+    board = game.generate_board(COLS, ROWS)
+    return board, player, winner
 
 
 # Handle move made by the AI
 def handle_ai_move():
     global board, player, winner
-    if winner == None:
-        move = game.minimax(board, None, 3, player)
+    moves_left = len(game.get_possible_moves(board))
+    if winner == None and moves_left != 0:
+        print("game level:", game_mode)
+        DEPTH = game_mode
+        move, value = game.minimax(
+            board, DEPTH, -1000000000000, 1000000000000, True)
+
+        # wait half a second before AI plays move
         time.sleep(0.5)
-        player, winner = check_move(board, player, move)
-        json_board = [[square.json_serializable() for square in row]
-                      for row in board]
+        player, str_player, winner = check_move(board, move, player)
+        json_board = game.get_json_board(board)
         emit('game_state', {'board': json_board, 'winner': winner,
-                            'next_player': player}, broadcast=True)
+                            'next_player': str_player}, broadcast=True)
 
 
-@app.route("/")
-def home():  # Main game UI
+@app.route("/", methods=["POST", "GET"])
+def home():
+    return render_template("index.html")
+
+
+@app.route("/game", methods=["POST", "GET"])
+def game_page():  # Main game UI
     global board
-    global player1
-    global player2
     global player
     global winner
-    board, player1, player2, player, winner = init_game()
+    global game_mode
+    board, player, winner = init_game()
+    if request.method == "POST":
+
+        # Set game mode to option selected by users
+        user_game_mode = request.form.get('game-mode')
+        if user_game_mode is not None:
+            game_mode = int(user_game_mode)
     return render_template("game.html", board=board)
 
 
@@ -67,17 +94,16 @@ def handle_connect():  # WebSocket connection event
 @socketio.on('human_move')
 def handle_human_move(move):  # Human player move event
     global board, player, winner
-    if winner == None:
+    possible_moves = game.get_possible_moves(board)
+    moves_left = len(possible_moves)
+
+    if winner == None and moves_left != 0:
         selection = int(move)
-        possible_moves = game.get_possible_moves(board)
-        for move in possible_moves:
-            move.value = game.calc_move_score(board, move, player)
         move = game.select_move(possible_moves, selection)
-        player, winner = check_move(board, player, move)
-        json_board = [[square.json_serializable() for square in row]
-                      for row in board]
+        player, str_player, winner = check_move(board, move, player)
+        json_board = game.get_json_board(board)
         emit('game_state', {'board': json_board, 'winner': winner,
-                            'next_player': player}, broadcast=True)
+                            'next_player': str_player}, broadcast=True)
 
         handle_ai_move()  # Make AI move after human player makes move
 
@@ -85,8 +111,7 @@ def handle_human_move(move):  # Human player move event
 @socketio.on('disconnect')
 def handle_disconnect():  # Handle server shutdown event
     print("Client disconnected")
-    socketio.close()  # Close WebSocket connection
 
 
 if __name__ == '__main__':
-    socketio.run(app)
+    socketio.run(app, debug=True)
