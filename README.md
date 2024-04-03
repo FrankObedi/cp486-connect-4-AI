@@ -1,7 +1,10 @@
 # AI Project : Connect Four
 
 ## Overview 
-Provide a high-level overview of what your project is about.
+Connect 4 is a classic vertical board game. Players take turns dropping tokens into columns which fall down to the lowest point in that column. A player can win by either getting 4 in a row, 4 in a column, or 4 in a diagonal.
+
+In this project we developed an AI program that plays this game, achieving unbeatable performance through the implementation of the minimax algorithm with alpha-beta pruning.
+
 
 ## Files
 #### 1. static folder
