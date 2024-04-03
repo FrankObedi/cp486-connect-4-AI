@@ -359,7 +359,7 @@ def minimax(board, depth, alpha, beta, maximizingPlayer):
         return column, value
 
 
-'''
+# '''
 if __name__ == "__main__":
     board = np.array([[0] * COLS] * ROWS)
 
@@ -474,4 +474,4 @@ if __name__ == "__main__":
         print(f"ai_wins: {wins_ai} (d{DEPTH})  human wins {wins_random} (d{human_depth})  draws {draws}  turns: {count}", 
               "  avg decision time: {:.5f}".format (averag_time / (wins_random + wins_ai + draws)), 
                 "  totalTime: {:.5f}".format(total_time) )
-# '''
+'''
