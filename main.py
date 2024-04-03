@@ -2,6 +2,7 @@ from flask import Flask, render_template, request
 from flask_socketio import SocketIO, emit
 import game
 import time
+import random
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -23,20 +24,25 @@ winner = None
 game_mode = 1
 
 
-# Initialize the game
+# helper functions
+def str_p(player):
+    if player == 1:
+        return "A"
+    return "H"
+
+
 def check_move(board, move, player):
     winner = None
-    game.drop_puck(board, move, player)
+    board = game.drop_puck(board, move, player)
 
     if game.is_winning_move(board, player):
         print(f'Player {player} wins!!!')
         winner = player
+    elif game.is_game_over(board):
+        winner = "tie"
     player = game.switch_player(player)
-    if player == 1:
-        str_player = "A"
-    else:
-        str_player = "H"
-    return player, str_player, winner
+    str_player = str_p(player)
+    return player, str_player, winner, board
 
 
 def init_game():
@@ -51,6 +57,7 @@ def init_game():
 def handle_ai_move():
     global board, player, winner
     moves_left = len(game.get_possible_moves(board))
+    print("moves left:", moves_left)
     if winner == None and moves_left != 0:
         print("game level:", game_mode)
         DEPTH = game_mode
@@ -59,7 +66,8 @@ def handle_ai_move():
 
         # wait half a second before AI plays move
         time.sleep(0.5)
-        player, str_player, winner = check_move(board, move, player)
+        player, str_player, winner, board = check_move(board, move, player)
+        game.print_board(board)
         json_board = game.get_json_board(board)
         emit('game_state', {'board': json_board, 'winner': winner,
                             'next_player': str_player}, broadcast=True)
@@ -77,6 +85,8 @@ def game_page():  # Main game UI
     global winner
     global game_mode
     board, player, winner = init_game()
+
+    game.display_board(board)
     if request.method == "POST":
 
         # Set game mode to option selected by users
@@ -100,7 +110,8 @@ def handle_human_move(move):  # Human player move event
     if winner == None and moves_left != 0:
         selection = int(move)
         move = game.select_move(possible_moves, selection)
-        player, str_player, winner = check_move(board, move, player)
+        player, str_player, winner, board = check_move(board, move, player)
+        game.print_board(board)
         json_board = game.get_json_board(board)
         emit('game_state', {'board': json_board, 'winner': winner,
                             'next_player': str_player}, broadcast=True)

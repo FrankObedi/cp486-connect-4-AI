@@ -84,16 +84,23 @@ socket.on("game_state", function (data) {
   }
 
   if (winner != null) {
-    console.log("Winner is: " + winner);
+    // console.log("Winner is: " + winner);
 
-    let result = "Human";
-    if (winner == 1) {
-      result = "AI";
+    if (winner == "tie") {
+      document.querySelector(".winner").innerHTML = "TIE GAME!";
+      let currPlayerElem = document.querySelector(".current-turn");
+      currPlayerElem.style.color = "red";
+      currPlayerElem.innerHTML = "TIE GAME!";
+    } else {
+      let result = "Human";
+      if (winner == 1) {
+        result = "AI";
+      }
+      document.querySelector(".winner").innerHTML = result + " WINS!";
+      let currPlayerElem = document.querySelector(".current-turn");
+      currPlayerElem.style.color = "red";
+      currPlayerElem.innerHTML = result + " WINS!";
     }
-    document.querySelector(".winner").innerHTML = result + " WINS!!";
-    let currPlayerElem = document.querySelector(".current-turn");
-    currPlayerElem.style.color = "red";
-    currPlayerElem.innerHTML = result + " WINS!!";
 
     const slots = document.querySelectorAll(".column");
     // disable all move buttons

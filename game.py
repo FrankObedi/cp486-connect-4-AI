@@ -112,7 +112,7 @@ def drop_puck(board, col, player):
     while r < ROWS-1 and board[r+1][col] == 0:
         r += 1
     board[r][col] = player
-    return
+    return board
 
 
 def switch_player(player):
@@ -198,6 +198,20 @@ def switch_player(player):
                     count += 1
             if count == WINDOW_SIZE:
                 return True
+
+
+def is_game_over(board):
+    if np.any(board == 0):
+        return False
+    return True
+
+
+def print_board(board):
+    for row in board:
+        print("|", end="")
+        for cell in row:
+            print(cell, end="|")
+        print()
 
 
 def is_winning_move(board, player):
