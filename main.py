@@ -114,4 +114,4 @@ def handle_disconnect():  # Handle server shutdown event
 
 
 if __name__ == '__main__':
-    socketio.run(app, debug=True)
+    socketio.run(app, debug=True, host='localhost', port=5000)
