@@ -28,8 +28,8 @@ Provide a high-level overview of what your project is about.
 ## Usage
 #### 1. Run the command:
     python "main.py"
-#### 2. Open your web browser to address:
-    http://127.0.0.1:5000    
+#### 2. Open your web browser to :
+    http://localhost:5000/    
 
 ## Installation
     pip install -r requirements.txt
