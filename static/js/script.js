@@ -5,7 +5,7 @@ function restartGame() {
 // Create a Socket.IO instance and connect to the server
 const socket = io();
 
-// Handle 'connect' event (optional)
+// Handle 'connect' event
 socket.on("connect", () => {
   "http://" + document.domain + ":" + location.port;
 });
