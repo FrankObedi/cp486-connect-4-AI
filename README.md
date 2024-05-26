@@ -17,16 +17,10 @@ In this project we developed an AI program that plays this game, achieving unbea
 - Code for the Flask web app used to create the game UI.
    
 #### 4. game.py
-- Slightly modified backend code used by the Flask web app for game play.
+- Backend code used by the Flask web app for game play.
 
-#### 5. connect4.py 
-- Backend code. Working version of connect four.
-  
-#### 6. requirements.txt
+#### 5. requirements.txt
 - Dependencies need to run the Flask web app.
-
-#### 7. c4.py 
-- First iteration of backend code. Not implemented correctly and scrapped.
 
 ## Usage
 #### 1. Run the command:
