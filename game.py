@@ -124,87 +124,11 @@ def switch_player(player):
     else:
         return PLAYER_AI
 
-# def is_winning_move(board, piece):
-    '''
-    Original
-    code taken from https://github.com/KeithGalli/Connect4-Python/blob/master/connect4_with_ai.py#L67
-    '''
-    # Check horizontal locations for win
-    for c in range(COLS-3):
-        for r in range(ROWS-4, 0, -1):
-            if board[r][c] == piece and board[r][c+1] == piece and board[r][c+2] == piece and board[r][c+3] == piece:
-                return True
-
-    # Check vertical locations for win
-    for c in range(COLS):
-        for r in range(ROWS-4, 0, -1):
-            if board[r][c] == piece and board[r+1][c] == piece and board[r+2][c] == piece and board[r+3][c] == piece:
-                return True
-
-    # Check positively sloped diaganols
-    for c in range(COLS-3):
-        for r in range(ROWS-3):
-            if board[r][c] == piece and board[r+1][c+1] == piece and board[r+2][c+2] == piece and board[r+3][c+3] == piece:
-                return True
-
-    # Check negatively sloped diaganols
-    for c in range(COLS-3):
-        for r in range(3, ROWS):
-            if board[r][c] == piece and board[r-1][c+1] == piece and board[r-2][c+2] == piece and board[r-3][c+3] == piece:
-                return True
-    return False
-
-# def is_winning_move(board, piece):
-    '''
-    code taken from https://github.com/KeithGalli/Connect4-Python/blob/master/connect4_with_ai.py#L67
-        modified for connect N. Slightly slower than above version
-    '''
-    # Check horizontal locations for win
-    for c in range(COLS-(WINDOW_SIZE-1)):
-        for r in range(ROWS):
-            count = 0
-            for i in range(WINDOW_SIZE):
-                if board[r][c+i] == piece:
-                    count += 1
-            if count == WINDOW_SIZE:
-                return True
-
-    # Check vertical locations for win
-    for c in range(COLS):
-        for r in range(ROWS-(WINDOW_SIZE-1)):
-            count = 0
-            for i in range(WINDOW_SIZE):
-                if board[r+i][c] == piece:
-                    count += 1
-            if count == WINDOW_SIZE:
-                return True
-
-    # Check positively sloped diaganols
-    for c in range(COLS-(WINDOW_SIZE-1)):
-        for r in range(ROWS-(WINDOW_SIZE-1)):
-            count = 0
-            for i in range(WINDOW_SIZE):
-                if board[r+i][c+i] == piece:
-                    count += 1
-            if count == WINDOW_SIZE:
-                return True
-
-    # Check negatively sloped diaganols
-    for c in range(COLS-(WINDOW_SIZE-1)):
-        for r in range((WINDOW_SIZE-1), ROWS):
-            count = 0
-            for i in range(WINDOW_SIZE):
-                if board[r-i][c+i] == piece:
-                    count += 1
-            if count == WINDOW_SIZE:
-                return True
-
 
 def is_game_over(board):
     if np.any(board == 0):
         return False
     return True
-
 
 def print_board(board):
     for row in board:
